@@ -1,56 +1,69 @@
 const express = require('express');
+const Pool = require('pg').Pool;
+const cors = require('cors');
+
+const pool = new Pool ({
+    user: 'pzzxnxyiflvvvx',
+    password: '1a11632ebb8084c2629b94ede08dd9e22384bc2c0fecf3630e90f919bb183b62',
+    host: 'ec2-34-200-72-77.compute-1.amazonaws.com',
+    database:'d3b0ifdkh03raf',
+    port: 5432,
+    ssl: {rejectUnauthorized: false }
+})
 
 const server = express();
 
+server.use(cors());
+
 server.use(express.json());
 
-// lojaderoupa(id,cliente,produto, fornecedor)
 
-const lojaderoupa = [
-    {id: 1, cliente: 'Cristina', produto: 'Blusa de Frio', fornecedor: 'Prada'},
-    {id: 2, cliente: 'Angela', produto: 'Vestido', fornecedor:'Dolce e Gabbana'} 
-]
+// GET
+server.get('/lojaderoupa', async function(request, response) {
+   result = await pool.query('SELECT * FROM lojaderoupa');
 
-server.get('/lojaderoupa', function(request, response) {
-    response.json(lojaderoupa);
+   return response.json(result.rows);
+})
+
+server.get('/lojaderoupa/search', async function(request, response) {
+    const cliente = request.query.cliente;
+    const sql = `SELECT * FROM lojaderoupa WHERE cliente ILIKE $1`;
+    const result = await pool.query(sql, ["%" +  cliente + "%"]);
+    return response.json(result.rows);
+})
+
+server.get('/lojaderoupa/:id', async function(request, response) {
+    const id = request.params.id;
+    const sql = `SELECT * FROM lojaderoupa WHERE id = $1`
+    const result = await pool.query(sql, [id]);
+    return response.json(result.rows);
 })
  
-server.post('/lojaderoupa', function(request, response) {
-   
-    const {id, cliente, produto, fornecedor} = request.body;
-
-    lojaderoupa.push({id, cliente, produto, fornecedor})
-    response.status(204).send();
-})
-
-server.put('/lojaderoupa/:id', function(request, response) {
-    const id = request.params.id;
-    const {cliente, produto, fornecedor} = request.body;
-
-   for(let i = 0; i < lojaderoupa.length; i++){
-        if(lojaderoupa[i].id == id) {
-            lojaderoupa[i].cliente = cliente;
-            lojaderoupa[i].produto = produto;
-            lojaderoupa[i].fornecedor = fornecedor;
-            break;
-        }
-    }
-
+//POST
+server.post('/lojaderoupa', async function(request, response) {
+    const cliente = request.body.cliente;
+    const produto = request.body.produto;
+    const fornecedor = request.body.fornecedor;
+    const sql= `INSERT INTO lojaderoupa (cliente, produto, fornecedor) VALUES ($1, $2, $3)`;
+    await pool.query(sql, [cliente, produto, fornecedor]);
     return response.status(204).send();
-
 })
 
-server.delete('/lojaderoupa/:id', function(request, response) {
-
+//DELETE
+server.delete('/lojaderoupa/:id', async function(request, response) {
     const id = request.params.id;
+    const sql = `DELETE FROM lojaderoupa WHERE id = $1`;
+    await pool.query(sql, [id]);
+    return response.status(204).send();
+})
 
-    for(let i = 0; i < lojaderoupa.length; i++){
-        if(lojaderoupa[i].id == id) {
-            lojaderoupa.splice(i, 1)
-            break;
-        }
-    }
 
+//UPDATE
+server.put('/lojaderoupa/:id', async function(request, response) {
+    const id = request.params.id;
+    const { cliente, produto, fornecedor } = request.body;
+    const sql = `UPDATE lojaderoupa SET cliente = $1, produto = $2, fornecedor = $3 WHERE id = $4`;
+    await pool.query(sql, [cliente, produto, fornecedor, id]);
     return response.status(204).send();
 })
 
